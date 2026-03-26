@@ -5,7 +5,7 @@ import sys
 import os
 from tqdm import tqdm
 
-from utils import create_segmentation_array
+from Springer_Segmentation.utils import create_segmentation_array
 
 
 def main():
