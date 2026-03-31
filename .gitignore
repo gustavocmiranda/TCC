@@ -1,5 +1,5 @@
-venv
+.venv
 data
 __pycache__
 *.pyc
-Springer-Segmentation/tiny_test/
+Springer_Segmentation/training_data/
