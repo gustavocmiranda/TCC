@@ -1,9 +1,9 @@
 import sys
 import random
 
-from duration_distributions import DataDistribution
-from segmentation_model import SegmentationModel
-from utils import get_wavs_and_tsvs, get_heart_rate_from_tsv, create_segmentation_array, create_train_test_split
+from Springer_Segmentation.duration_distributions import DataDistribution
+from Springer_Segmentation.segmentation_model import SegmentationModel
+from Springer_Segmentation.utils import get_wavs_and_tsvs, get_heart_rate_from_tsv, create_segmentation_array, create_train_test_split
 import matplotlib.pyplot as plt
 import numpy as np
 

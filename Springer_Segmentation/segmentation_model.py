@@ -2,10 +2,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
-from duration_distributions import DataDistribution
-from extract_features import get_all_features, get_default_features
-from heart_rate import get_heart_rate
-from viterbi import viterbi_segment
+from Springer_Segmentation.duration_distributions import DataDistribution
+from Springer_Segmentation.extract_features import get_all_features, get_default_features
+from Springer_Segmentation.heart_rate import get_heart_rate
+from Springer_Segmentation.viterbi import viterbi_segment
 
 
 class SegmentationModel(object):
