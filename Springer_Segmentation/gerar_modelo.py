@@ -7,7 +7,7 @@ from utils import create_segmentation_array, create_train_test_split
 print("--- INICIANDO TREINAMENTO DO MODELO SPRINGER ---")
 
 # 1. COLOQUE AQUI O CAMINHO EXATO DA PASTA COM OS DADOS DO PHYSIONET (.wav e .tsv) no seu Windows
-pasta_physionet = r"Springer-Segmentation\training_data" 
+pasta_physionet = r"C:\Users\gusta\TCC\TCC\Springer_Segmentation\training_data" 
 
 print("1/4 - Lendo arquivos de treinamento...")
 train_recordings, train_segmentations, _, _ = create_train_test_split(

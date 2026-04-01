@@ -10,7 +10,7 @@ from tqdm import tqdm
 # Caminho absoluto da sua pasta do TCC
 caminho_tcc = r"C:\Users\gusta\TCC\TCC"
 pasta_repositorio = os.path.join(caminho_tcc, "Springer_Segmentation")
-
+ 
 # Força o Python a ler a pasta do Springer ANTES de carregar o modelo
 sys.path.insert(0, pasta_repositorio)
 
@@ -144,7 +144,7 @@ for arquivo in tqdm(arquivos_wav, desc="A processar pacientes"):
 # --- 4. EXPORTAÇÃO ---
 print("\n3/3 - A guardar os dados...")
 df_features = pd.DataFrame(dados_extraidos)
-ficheiro_saida = os.path.join(caminho_tcc, "features_extraídas.csv")
+ficheiro_saida = os.path.join(caminho_tcc, "features_extraidas.csv")
 df_features.to_csv(ficheiro_saida, index=False)
 
 print(f"Sucesso absoluto! As 20 features foram guardadas no ficheiro: {ficheiro_saida}")
