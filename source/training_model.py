@@ -22,7 +22,10 @@ y = df['AS']
 # 3. Dividir os dados em Treino e Teste
 # 80% dos áudios serão usados para a IA estudar.
 # 20% ficarão escondidos para aplicarmos a "prova final" e ver se ela aprendeu mesmo.
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+print("Distribuição das classes no conjunto de teste:")
+print(y_test.value_counts())
 
 print(f"Áudios para Treino: {X_train.shape[0]}")
 print(f"Áudios para Teste (Prova): {X_test.shape[0]}")
