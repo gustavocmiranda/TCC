@@ -134,5 +134,4 @@ def extrair_features(caminho_repo, caminho_modelo, pasta_audios, arquivo_saida):
     
     print(f"Sucesso! Salvo em: {arquivo_saida}")
     
-    # O truque para o Jupyter: retornar o DataFrame para uso imediato!
     return df_features
