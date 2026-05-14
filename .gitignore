@@ -3,3 +3,4 @@ data
 __pycache__
 *.pyc
 Springer_Segmentation/training_data/
+*.csv
