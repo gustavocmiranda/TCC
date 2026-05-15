@@ -30,28 +30,33 @@ cd TCC
 python3.10 -m venv .venv
 source .venv/bin/activate          # Linux / macOS
 # .venv\Scripts\activate           # Windows PowerShell
+pip install -r requirements.txt
 ```
 
-### 2.2. Converter `requirements.txt` (necessário em Linux/macOS)
+### 2.2. Configurar o caminho do projeto via `.env`
 
-O arquivo está em **UTF-16 LE com CRLF** (gerado por `pip freeze` no PowerShell). `pip install -r` em Linux/macOS não interpreta esse encoding. Converter para UTF-8 antes de instalar:
+O notebook e os módulos auxiliares leem a raiz do projeto a partir da variável de ambiente `PROJECT_ROOT`, carregada via `python-dotenv`. Copiar o template e preencher com o caminho absoluto da raiz na sua máquina:
 
 ```bash
-iconv -f UTF-16LE -t UTF-8 requirements.txt | tr -d '\r' > requirements_utf8.txt
-pip install -r requirements_utf8.txt
+cp .env.example .env
+# editar .env e ajustar PROJECT_ROOT
 ```
 
-No Windows o arquivo original funciona sem conversão.
+Conteúdo esperado do `.env`:
 
-### 2.3. Dependências-chave
+```
+PROJECT_ROOT=/caminho/absoluto/para/a/raiz/do/projeto
+```
 
-`scikit-learn==1.7.2`, `xgboost==3.2.0`, `scikit-multilearn==0.2.0`, `librosa==0.11.0`, `shap==0.49.1`, `lime==0.2.0.1`, `numpy==2.2.6`, `pandas==2.3.3`, `scipy==1.15.3`. Versões diferentes de `scikit-learn` e `xgboost` podem alterar resultados numéricos por mudanças internas de algoritmo.
+O arquivo `.env` está no `.gitignore` e não é versionado. O `.env.example` serve como modelo para novos colaboradores.
+
+> Se a variável `PROJECT_ROOT` não estiver definida, o notebook usa `Path.cwd()` como *fallback* — isso funciona desde que o Jupyter seja iniciado a partir da raiz do projeto.
 
 ---
 
 ## 3. Dataset BMD-HS
 
-O dataset não está versionado (excluído via `.gitignore`). Baixar de:
+Baixar de:
 
 **https://github.com/mHealthBuet/BMD-HS-Dataset**
 
@@ -86,7 +91,8 @@ TCC/
 ├── springer_segmentation_model.pkl     # Modelo HSMM pré-treinado (pular Seção 5.1)
 ├── features_extraidas.csv              # Features temporais (pular Seção 5.2)
 ├── dataset_final.csv                   # Dataset fundido (pular Seção 5.4)
-├── requirements.txt                    # Dependências (UTF-16 LE — ver Seção 2.2)
+├── requirements.txt                    # Dependências (UTF-8)
+├── .env.example                        # Modelo de configuração (copiar para .env)
 └── .python-version                     # 3.10.11
 ```
 
@@ -94,7 +100,7 @@ TCC/
 
 ## 5. Pipeline de replicação
 
-O ponto de entrada é `projeto.ipynb`. Antes de executar, **ajustar a constante `CAMINHO_TCC`** em todas as células que a definem (atualmente codificada como `r"C:\Users\gusta\TCC\TCC"`). Substituir pelo caminho absoluto da raiz do projeto na sua máquina. Em Linux/macOS, trocar também `r"...\data\train"` por `os.path.join(CAMINHO_TCC, "data", "train")`.
+O ponto de entrada é `projeto.ipynb`. A célula de imports carrega o `.env` e define `PROJECT_ROOT`, `DATA_DIR`, `AUDIOS_DIR`, `SPRINGER_DIR` e `MODELO_PKL` — não há mais caminhos *hardcoded* nas células subsequentes.
 
 A ordem das etapas abaixo segue a ordem das células do notebook. Cada etapa é independente — pode-se pular as primeiras três se os artefatos versionados forem usados como ponto de partida.
 
@@ -116,17 +122,7 @@ Tempo estimado: ~20 min para 872 áudios.
 
 ### 5.3. Extração de *features* espectrais (obrigatória se for refazer a fusão)
 
-Gera `features_espectrais.csv` (49 *features*: 26 MFCCs + 10 MPEG-7 + 13 de bandas clínicas). **Não está versionado** — precisa ser gerado localmente:
-
-```python
-# Célula correspondente do notebook (após ajuste de CAMINHO_TCC)
-features_espectrais = extrair_features_espectrais(
-    caminho_repo=PASTA_REPO,
-    caminho_modelo=MODELO_PKL,
-    pasta_audios=PASTA_AUDIOS,
-    arquivo_saida="features_espectrais.csv",
-)
-```
+Gera `features_espectrais.csv` (49 *features*: 26 MFCCs + 10 MPEG-7 + 13 de bandas clínicas). **Não está versionado** — precisa ser gerado localmente. Rodar a célula correspondente do notebook (todos os caminhos já são derivados de `PROJECT_ROOT`).
 
 Tempo estimado: ~30 min para 872 áudios.
 
@@ -179,38 +175,3 @@ Pequenas variações (< 1 pp) podem ocorrer por diferenças de versão de `sciki
 
 ---
 
-## 7. Solução de problemas comuns
-
-| Sintoma | Causa provável | Solução |
-|---------|----------------|---------|
-| `pip install -r requirements.txt` lança `UnicodeDecodeError` | Arquivo em UTF-16 LE | Ver Seção 2.2 (`iconv`) |
-| Notebook quebra em `FileNotFoundError: data/train.csv` | `data/` não baixado | Ver Seção 3 |
-| Notebook quebra em `pasta_audios não existe` | `CAMINHO_TCC` ainda aponta para o caminho original do autor | Ajustar a constante em **todas** as células que a definem |
-| Em Linux/macOS, `r'data\train.csv'` falha | Separador de path Windows | Trocar para `os.path.join('data', 'train.csv')` em `source/transformation.py` linhas 11–12 |
-| `ImportError: No module named 'Springer_Segmentation'` | `sys.path` não inclui `CAMINHO_TCC` | Os scripts já fazem `sys.path.insert(0, caminho_repo)`; se ainda falhar, rodar o notebook a partir da raiz do projeto |
-| Resultados do XGBoost levemente diferentes | Versão de `xgboost` diferente de 3.2.0 | Fixar a versão (`pip install xgboost==3.2.0`) |
-| `shap.TreeExplainer` lança `Additivity check failed` | Imprecisão numérica em estimadores específicos | O notebook já trata com `try/except` e `check_additivity=False` como *fallback* |
-
----
-
-## 8. Licença
-
-CC BY 4.0 (segue a licença do dataset BMD-HS). Ver `LICENSE`.
-
----
-
-## 9. Citação
-
-Caso utilize este pipeline, citar o trabalho original do TCC (em preparação) e o dataset:
-
-```bibtex
-@article{ALI2026100237,
-  title  = {BUET multi-disease heart sound dataset: A comprehensive auscultation dataset for developing computer-aided diagnostic systems},
-  author = {Ali, Shams Nafisa and Zahin, Afia and Shuvo, Samiul Based and others},
-  journal = {Computer Methods and Programs in Biomedicine Update},
-  volume = {9},
-  pages  = {100237},
-  year   = {2024},
-  doi    = {10.1016/j.cmpbup.2026.100237}
-}
-```
