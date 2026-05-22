@@ -137,16 +137,14 @@ Executar as células do notebook na ordem:
 | Etapa | Saída | Tempo |
 |-------|-------|-------|
 | Preparação dos dados (split paciente-level 80/20 via `iterative_train_test_split`) | divisão em memória | < 1 min |
-| Feature selection Camada 1 (quasi-const + Pearson + ANOVA univariada por *label*) | ~64 *features* mantidas | < 1 min |
-| *Threshold tuning* por *label* (GroupKFold 5) | *thresholds* otimizados por doença | ~5 min |
-| Benchmark de 6 modelos (LR, GB, RF, SVM, KNN, XGB) com CV aninhada | tabela de *scores* | ~20 min |
-| *Tuning* de hiperparâmetros (GridSearchCV XGB + RF) | melhores hiperparâmetros | ~30 min |
-| Diagnóstico por *label* (XGBoost tunado) | tabela per-doença | ~3 min |
-| Avaliação no *held-out* (XGB vs RF vs *trivial*) | tabela de *scores* | ~5 min |
-| **Validação por 20 *splits* (Wilcoxon pareado)** | decisão estatística | ~60 min |
-| **Interpretabilidade (SHAP global + local, LIME)** | gráficos *waterfall*, *summary plot* | ~10 min |
+| Feature selection Camada 1 (quasi-const + Pearson + ANOVA univariada por *label*) — aplicada em D1/D3 | ~64 *features* mantidas | < 1 min |
+| **Matriz cruzada — 6 modelos × 3 datasets × 20 *splits* = 360 runs** (LR, GB, RF, SVM, KNN, XGB sobre D1 áudio / D2 demográfico / D3 combinado; `RandomizedSearchCV(n_iter=20)` + `GroupKFold(5)` + *threshold tuning* por *label* dentro de cada run) | `resultados/08_matriz_runs.csv` (360 linhas) + `08_matriz_mediana_score_clinico.csv` (matriz 6×3) | ~6 h |
+| **Bateria de Wilcoxon pós-matriz** — (a) pareado entre os 3 melhores em D3, (b) vencedor vs *trivial* "tudo positivo", (c.1) D3 vs D1, (c.2) D3 vs D2 | `resultados/08_wilcoxon_pos_matriz.csv` | < 1 min |
+| **Diagnóstico por doença — desempate dos top-3 em D3** (max-min do pior caso por doença sob FN×5) | `resultados/08_diagnostico_top3_d3.csv` | ~5 min |
+| **Interpretabilidade (SHAP global + local, LIME)** sobre XGB tunado treinado em toda a base | gráficos *waterfall*, *summary plot* | ~10 min |
+| **Importância via Regressão Logística** (*sanity check* linear cruzado contra ranking SHAP) | `resultados/08_lr_importancia_features.csv` | ~2 min |
 
-Os tempos são estimativas em uma CPU moderna (4 núcleos). Resultados intermediários são salvos em `resultados/` (criada automaticamente).
+Os tempos são estimativas em uma CPU moderna (4 núcleos). A matriz é a etapa mais cara — pode ser retomada a partir do *checkpoint* `08_matriz_runs.csv` se interrompida. Resultados intermediários são salvos em `resultados/` (criada automaticamente).
 
 ---
 
@@ -154,17 +152,20 @@ Os tempos são estimativas em uma CPU moderna (4 núcleos). Resultados intermedi
 
 ### 6.1. Sementes
 
-- `random_state=42` é o padrão em todo o *pipeline* (`train_test_split`, modelos, `GridSearchCV`).
-- Para a validação por *splits* repetidos (Etapa 12), as sementes são `range(100, 120)` para a rodada principal e `range(0, 20)` para a rodada de robustez. Ambas chegam ao mesmo veredito (XGB > RF).
-- `np.random.seed(42)` é fixado imediatamente antes de `iterative_train_test_split` para reprodutibilidade do *split* multilabel.
+- `random_state=42` é o padrão em todo o *pipeline* (`train_test_split`, modelos, `RandomizedSearchCV`).
+- A matriz cruzada usa `range(100, 120)` para os 20 *splits* repetidos. Cada seed é reaplicada igualmente aos 6 modelos × 3 datasets, garantindo pareamento exato para os testes de Wilcoxon.
+- `np.random.seed(42)` é fixado imediatamente antes de `iterative_train_test_split` para reprodutibilidade do *split* multilabel inicial.
 
 ### 6.2. Resultados esperados
 
-Após executar todo o *pipeline*, esperar:
+Após executar todo o *pipeline*, esperar (referência: `resultados/08_matriz_mediana_score_clinico.csv`):
 
-- **Mediana do *score* clínico macro nos 20 *splits*** (XGBoost): ~81 %
-- **Wilcoxon pareado XGB vs RF**: p ≈ 0,003
-- ***Held-out* macro (XGBoost tunado)**: ~83 %
+- **Matriz 6×3 — mediana em D3 (top-3)**: GB ≈ 82,1 %, LR ≈ 81,5 %, **XGB ≈ 81,1 %**
+- **Wilcoxon entre os 3 finalistas em D3**: todos com p ≥ 0,3 (empate estatístico)
+- **Wilcoxon vs *trivial* "tudo positivo"**: p < 0,001, 19/20 *splits* a favor do vencedor nominal
+- **Wilcoxon D3 vs D1 e D3 vs D2**: p ≤ 0,0001, 18–20/20 *splits* (D3 ganha em ambos)
+- **Desempate por doença (max-min)**: **XGBoost** (piso 61,1 pp em MR) > GB (58,6 pp em AR) > LR (57,4 pp em MR)
+- **Veredito final**: XGBoost selecionado para SHAP/LIME
 
 Pequenas variações (< 1 pp) podem ocorrer por diferenças de versão de `scikit-learn` ou de `xgboost`.
 
