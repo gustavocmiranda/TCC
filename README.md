@@ -146,19 +146,19 @@ Executar as células do notebook na ordem:
 |-------|-------|-------|
 | Preparação dos dados (*split* paciente-level 80/20 via `iterative_train_test_split`) | divisão em memória | < 1 min |
 | Feature selection Camada 1 (quasi-const + Pearson + ANOVA univariada por *label*) — aplicada em D1/D3 | *features* mantidas | < 1 min |
-| **Matriz cruzada — 6 modelos × 3 visões × 20 *splits* = 360 runs** (LR, GB, RF, SVM, KNN, XGB sobre D1 áudio / D2 demografia / D3 combinado; `RandomizedSearchCV(n_iter=20)` + `GroupKFold(5)` + *threshold tuning* por *label* dentro de cada run, com *scoring* igual ao *score* clínico) | `resultados/08_matriz_runs.csv` (360 linhas) + `08_matriz_mediana_score_clinico.csv` (matriz 6×3) | ~6 h |
-| **Bateria de Wilcoxon pós-matriz** — (a) pareado entre os 3 melhores em D3, (b) vencedor vs *trivial* "tudo positivo", (c.1) D3 vs D1, (c.2) D3 vs D2 | `resultados/08_wilcoxon_pos_matriz.csv` | < 1 min |
-| **Diagnóstico por doença — desempate dos top-3 em D3** (max-min do pior caso por doença sob FN×5) | `resultados/08_diagnostico_top3_d3.csv` | ~5 min |
+| **Matriz cruzada — 6 modelos × 3 visões × 20 *splits* = 360 runs** (LR, GB, RF, SVM, KNN, XGB sobre D1 áudio / D2 demografia / D3 combinado; `RandomizedSearchCV(n_iter=20)` + `GroupKFold(5)` + *threshold tuning* por *label* dentro de cada run, com *scoring* igual ao *score* clínico) | `resultados/matriz_runs.csv` (360 linhas) + `matriz_mediana_score_clinico.csv` (matriz 6×3) | ~6 h |
+| **Bateria de Wilcoxon pós-matriz** — (a) pareado entre os 3 melhores em D3, (b) vencedor vs *trivial* "tudo positivo", (c.1) D3 vs D1, (c.2) D3 vs D2 | `resultados/wilcoxon_pos_matriz.csv` | < 1 min |
+| **Diagnóstico por doença — desempate dos top-3 em D3** (max-min do pior caso por doença sob FN×5) | `resultados/diagnostico_top3_d3.csv` | ~5 min |
 
-> A matriz é a etapa mais cara e pode ser **retomada a partir do *checkpoint*** `resultados/08_matriz_runs.csv` se interrompida (runs já concluídos são pulados). A pasta `resultados/` é criada automaticamente.
+> A matriz é a etapa mais cara e pode ser **retomada a partir do *checkpoint*** `resultados/matriz_runs.csv` se interrompida (runs já concluídos são pulados). A pasta `resultados/` é criada automaticamente.
 
 ### 5.6. Confiabilidade e interpretabilidade (obrigatórias — análises do modelo final)
 
 | Etapa | Saída | Tempo |
 |-------|-------|-------|
-| **Curvas Precision-Recall + AP + calibração (Brier, *reliability*)** — avaliação *out-of-fold* (`GroupKFold(5)`) do XGB final | `resultados/08_calibracao_brier.csv` + gráficos | ~5 min |
+| **Curvas Precision-Recall + AP + calibração (Brier, *reliability*)** — avaliação *out-of-fold* (`GroupKFold(5)`) do XGB final | `resultados/calibracao_brier.csv` + gráficos | ~5 min |
 | **Interpretabilidade (SHAP global + local, LIME)** sobre o XGB tunado treinado em toda a base | gráficos *summary*/*waterfall* | ~10 min |
-| **Importância via Regressão Logística** (*sanity check* linear cruzado contra o ranking SHAP) | `resultados/08_lr_importancia_features.csv` | ~2 min |
+| **Importância via Regressão Logística** (*sanity check* linear cruzado contra o ranking SHAP) | `resultados/lr_importancia_features.csv` | ~2 min |
 
 Os tempos são estimativas em uma CPU moderna (4 núcleos).
 
@@ -174,7 +174,7 @@ Os tempos são estimativas em uma CPU moderna (4 núcleos).
 
 ### 6.2. Resultados esperados
 
-Após executar a modelagem, esperar (referência: `resultados/08_matriz_mediana_score_clinico.csv` e `08_wilcoxon_pos_matriz.csv`):
+Após executar a modelagem, esperar (referência: `resultados/matriz_mediana_score_clinico.csv` e `wilcoxon_pos_matriz.csv`):
 
 - **Matriz 6×3 — mediana do *score* clínico em D3 (top-3)**: **XGB ≈ 81,50 %**, LR ≈ 81,17 %, GB ≈ 80,62 %.
 - **Wilcoxon entre os 3 finalistas em D3** (empate estatístico): XGB vs LR *p* = 0,76; XGB vs GB *p* = 0,053; LR vs GB *p* = 0,90.

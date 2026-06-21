@@ -48,7 +48,7 @@ def treinar_modelo_springer(caminho_repo, pasta_dados, arquivo_saida, max_audios
     print("4/4 - Salvando o modelo treinado...")
     joblib.dump(modelo_springer, arquivo_saida)
 
-    print(f"--- SUCESSO! Modelo original salvo em: {arquivo_saida} ---")
+    print("--- SUCESSO! Modelo Springer treinado e salvo. ---")
     
     # Retorna o modelo em memória caso queira usar na mesma hora no Notebook
     return modelo_springer

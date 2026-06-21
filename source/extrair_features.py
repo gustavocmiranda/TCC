@@ -25,7 +25,7 @@ def extrair_features(caminho_repo, caminho_modelo, pasta_audios, arquivo_saida):
 
     # 3. Listar arquivos
     arquivos_wav = [f for f in os.listdir(pasta_audios) if f.endswith('.wav')]
-    print(f"2/3 - Encontrados {len(arquivos_wav)} áudios para processar na pasta {pasta_audios}.")
+    print(f"2/3 - Encontrados {len(arquivos_wav)} áudios para processar na pasta {os.path.basename(pasta_audios)}.")
 
     dados_extraidos = []
 
@@ -132,6 +132,6 @@ def extrair_features(caminho_repo, caminho_modelo, pasta_audios, arquivo_saida):
     df_features = pd.DataFrame(dados_extraidos)
     df_features.to_csv(arquivo_saida, index=False)
     
-    print(f"Sucesso! Salvo em: {arquivo_saida}")
+    print(f"Sucesso! Salvo em: {os.path.basename(arquivo_saida)}")
     
     return df_features

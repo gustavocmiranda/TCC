@@ -78,7 +78,7 @@ def extrair_features_espectrais(caminho_repo, caminho_modelo, pasta_audios, arqu
     modelo = joblib.load(caminho_modelo)
 
     arquivos = sorted([f for f in os.listdir(pasta_audios) if f.endswith('.wav')])
-    print(f"2/3 - Processando {len(arquivos)} audios em {pasta_audios}")
+    print(f"2/3 - Processando {len(arquivos)} audios em {os.path.basename(pasta_audios)}")
 
     n_fft = 512
     hop = 128
@@ -154,5 +154,5 @@ def extrair_features_espectrais(caminho_repo, caminho_modelo, pasta_audios, arqu
 
     df = pd.DataFrame(dados)
     df.to_csv(arquivo_saida, index=False)
-    print(f"3/3 - Salvo em: {arquivo_saida}  ({df.shape[0]} gravacoes x {df.shape[1]-1} features)")
+    print(f"3/3 - Salvo em: {os.path.basename(arquivo_saida)}  ({df.shape[0]} gravacoes x {df.shape[1]-1} features)")
     return df
