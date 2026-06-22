@@ -14,7 +14,10 @@ def create_train_test_split(directory="tiny_test",
     patient_ids = set()
     for file_ in tqdm(sorted(os.listdir(directory))):
         patient_ids.add(file_[:5])
-    patient_ids = list(patient_ids)
+    # sorted() antes do shuffle: a ordem de list(set) de strings depende do
+    # PYTHONHASHSEED (varia por processo). Ordenar torna o shuffle (com semente
+    # fixa) reprodutivel entre execucoes/maquinas.
+    patient_ids = sorted(patient_ids)
     random.shuffle(patient_ids)
     max_train_idx = int(np.round(frac_train * len(patient_ids)))
     train_ids = patient_ids[:max_train_idx]

@@ -13,7 +13,7 @@ Pipeline reprodutível para classificar quatro doenças valvares cardíacas (AS 
 | Item | Versão / requisito |
 |------|--------------------|
 | Python | **3.10.11** (cf. `.python-version`) |
-| Sistema operacional | Linux, macOS ou Windows (caminhos via `pathlib`/`PROJECT_ROOT`) |
+| Sistema operacional | **Testado apenas em Windows 11.** Espera-se portabilidade para Linux/macOS (caminhos via `pathlib`/`PROJECT_ROOT`), mas sem garantia. |
 | RAM | ≥ 8 GB recomendado |
 | Disco | ~2 GB (dataset + artefatos) |
 | Tempo da modelagem (núcleo) | ~6 h em CPU (a matriz cruzada é a etapa cara) |
@@ -160,7 +160,7 @@ Executar as células do notebook na ordem:
 | **Interpretabilidade (SHAP global + local, LIME)** sobre o XGB tunado treinado em toda a base | gráficos *summary*/*waterfall* | ~10 min |
 | **Importância via Regressão Logística** (*sanity check* linear cruzado contra o ranking SHAP) | `resultados/lr_importancia_features.csv` | ~2 min |
 
-Os tempos são estimativas em uma CPU moderna (4 núcleos).
+Os tempos são estimativas medidas no sistema descrito na Seção 6.3.
 
 ---
 
@@ -171,6 +171,7 @@ Os tempos são estimativas em uma CPU moderna (4 núcleos).
 - `random_state=42` é fixado nos **estimadores** (LR, GB, RF, SVM, XGB) e no modelo final treinado sobre toda a base.
 - A matriz cruzada usa as sementes `range(100, 120)` para os **20 *splits* repetidos**. Cada semente é reaplicada igualmente aos 6 modelos × 3 visões, garantindo pareamento exato para os testes de Wilcoxon, e é usada como `random_state` do `RandomizedSearchCV` daquele run.
 - `np.random.seed(seed)` é fixado imediatamente antes de `iterative_train_test_split`, garantindo o *split* multirrótulo reprodutível de cada semente.
+- **Treino da segmentação HSMM** (`Springer_Segmentation/gerar_modelo.py`): `seed=42` fixa `random.seed` **e** `np.random.seed` antes do treino, cobrindo os dois pontos estocásticos do ajuste (`random.shuffle` em `create_train_test_split` e `np.random.permutation` na subamostragem de estados em `segmentation_model.fit`). Em `utils.py`, a lista de pacientes é ordenada (`sorted`) antes do *shuffle*, eliminando a dependência do `PYTHONHASHSEED`. Com isso, dois treinos do modelo de segmentação geram um `.pkl` **byte-idêntico** (verificado).
 
 ### 6.2. Resultados esperados
 
@@ -188,5 +189,33 @@ Pequenas variações (< 1 pp) podem ocorrer por diferenças de versão de `sciki
 
 ### 6.3. Sistema testado
 
-- Windows 11 e Linux, Python 3.10.11. O código é independente de SO (caminhos via `pathlib` e `PROJECT_ROOT`).
-- Paralelismo: `n_jobs=-1` em `RandomizedSearchCV` e nos modelos que o suportam.
+Pipeline executado e validado em uma única configuração:
+
+- **Sistema operacional**: Windows 11. O código não foi testado em Linux ou macOS; espera-se portabilidade (caminhos via `pathlib`/`PROJECT_ROOT`), mas sem garantia.
+- **Python**: 3.10.11.
+- **CPU**: Intel Core i5-10400F (6 núcleos / 12 *threads*).
+- **Memória**: 16 GB de RAM.
+
+### 6.4. Regeneração completa do zero
+
+Os artefatos versionados (`*.pkl`, `*.csv`) permitem reproduzir os resultados sem
+recomputar. Para **regenerar tudo a partir do áudio bruto** — gerando novo modelo de
+segmentação, novas *features* e nova matriz — é preciso **apagar os artefatos
+regeneráveis antes de rodar o notebook**, pois há *guards* que pulam etapas cujo
+arquivo de saída já existe (inclusive o *checkpoint* da matriz, que retoma runs já
+concluídos). Com as sementes fixas (Seção 6.1), o resultado é determinístico.
+
+Apagar **apenas** os arquivos abaixo (os dados brutos em `data/` e
+`Springer_Segmentation/training_data/` **nunca** são apagados):
+
+```bash
+rm -f springer_segmentation_model.pkl \
+      features_extraidas.csv \
+      features_espectrais.csv \
+      dataset_final.csv
+rm -rf resultados/          # inclui o checkpoint matriz_runs.csv
+```
+
+Em seguida, executar o `projeto.ipynb` do início ao fim (*Run All*). A ordem de
+regeneração é: segmentação HSMM → *features* temporais/espectrais → `dataset_final.csv`
+→ matriz cruzada → análises. Tempo total dominado pela matriz (~6 h em CPU).

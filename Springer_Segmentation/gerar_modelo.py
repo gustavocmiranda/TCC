@@ -1,13 +1,28 @@
 import sys
+import random
 import joblib
+import numpy as np
 from tqdm.notebook import tqdm
 
-def treinar_modelo_springer(caminho_repo, pasta_dados, arquivo_saida, max_audios=None):
+def treinar_modelo_springer(caminho_repo, pasta_dados, arquivo_saida, max_audios=None, seed=42):
     """
     Treina o modelo de segmentação de Springer (HMM/Viterbi) a partir dos dados do PhysioNet.
     Retorna o modelo treinado e o salva em um arquivo .pkl.
+
+    Reprodutibilidade: o treino é estocástico em dois pontos que usam o RNG global
+    (random.shuffle em utils.create_train_test_split e np.random.permutation na
+    subamostragem de estados em segmentation_model.fit). Fixamos `seed` em ambos os
+    RNGs para garantir que retreinos futuros sejam determinísticos.
+    NOTA: o .pkl versionado no repositório (usado no paper) foi gerado ANTES desta
+    correção, sem semente; portanto um retreino seeded NÃO reproduz aquele artefato
+    byte a byte. O .pkl canônico é a fonte da verdade — o guard `if not MODELO_PKL.exists()`
+    no notebook impede sobrescrevê-lo por acidente.
     """
     print("--- INICIANDO TREINAMENTO DO MODELO SPRINGER ---")
+
+    # Fixa os dois RNGs globais ANTES de qualquer chamada que os consome.
+    random.seed(seed)
+    np.random.seed(seed)
 
     # 1. Injeção do caminho (Essencial no Jupyter para não dar erro de ModuleNotFound)
     if caminho_repo not in sys.path:
