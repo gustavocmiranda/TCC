@@ -4,7 +4,7 @@ Pipeline reprodutível para classificar quatro doenças valvares cardíacas (AS 
 
 > **Foco deste README**: replicabilidade. A descrição metodológica completa está no manuscrito do TCC.
 
-**Modelo final**: XGBoost sobre a visão combinada (áudio + demografia + contexto de captura), selecionado por uma matriz cruzada de 6 modelos × 3 visões × 20 *splits*, com validação por Wilcoxon pareado e desempate por robustez clínica por doença.
+**Modelo final**: **Regressão Logística** sobre a visão combinada (áudio + demografia + contexto de captura), selecionada por uma matriz cruzada de 6 modelos × 3 visões × 20 *splits*, com validação por Wilcoxon pareado e desempate por robustez clínica por doença. Os três finalistas em D3 (LR, *gradient boosting* e XGBoost) **empatam estatisticamente** (Wilcoxon, *p* entre 0,41 e 0,78); a LR vence o desempate por ter o maior piso por doença sob a métrica FN×5 e oferece interpretabilidade intrínseca (coeficientes lineares).
 
 ---
 
@@ -62,9 +62,13 @@ O arquivo `.env` está no `.gitignore` e não é versionado. O `.env.example` se
 
 ### 3.1. Dataset BMD-HS (obrigatório apenas para o caminho completo)
 
-Dados oficiais (download público):
+> **Os áudios brutos NÃO são versionados neste repositório** (a pasta `data/` está no `.gitignore`, por se tratar de dados de terceiros sob licença própria). Para o **caminho rápido** eles são dispensáveis — veja a nota no fim desta seção. Só baixe o BMD-HS se for refazer a extração de *features* a partir do áudio.
 
-**https://github.com/mHealthBuet/BMD-HS-Dataset**
+Download público (espelho atual, com a estrutura já organizada):
+
+**https://github.com/sani002/BMD-HS-Dataset**
+
+> O repositório original dos autores (`github.com/mHealthBuet/BMD-HS-Dataset`), citado no artigo, está **fora do ar (HTTP 404)** em junho/2026; o espelho acima contém os mesmos 872 áudios, `train.csv` e `additional_metadata.csv`. A referência acadêmica canônica continua sendo o artigo do dataset (citação abaixo).
 
 Estrutura esperada após o download (criar a pasta `data/` na raiz do projeto):
 
@@ -85,7 +89,16 @@ Citação do dataset:
 
 ### 3.2. Dados de segmentação (opcional)
 
-A etapa de segmentação HSMM (Seção 5.1) é treinada com gravações anotadas do **PhysioNet/CinC** (https://physionet.org/). Como o modelo treinado (`springer_segmentation_model.pkl`) já está versionado, esses dados só são necessários se você quiser retreinar a segmentação do zero.
+A etapa de segmentação HSMM (Seção 5.1) é treinada com gravações anotadas do **CirCor DigiScope Phonocardiogram Dataset** (dados de treino do PhysioNet/CinC Challenge 2022), download público:
+
+**https://physionet.org/content/circor-heart-sound/1.0.3/** (DOI: [10.13026/tshs-mw03](https://doi.org/10.13026/tshs-mw03))
+
+```bash
+# baixar via wget (ou usar o ZIP de ~450 MB disponível na página)
+wget -r -N -c -np https://physionet.org/files/circor-heart-sound/1.0.3/
+```
+
+Como o modelo treinado (`springer_segmentation_model.pkl`) já está versionado, esses dados só são necessários se você quiser **retreinar a segmentação do zero** (Seção 5.1). Os áudios devem ser apontados em `Springer_Segmentation/training_data/` (também ignorado pelo `.gitignore`).
 
 ---
 
@@ -99,11 +112,12 @@ TCC/
 │   ├── extrair_features_espectrais.py  # 49 features espectrais (MFCC + descritores + bandas clínicas)
 │   ├── transformation.py               # Fusão features ↔ rótulos ↔ metadados
 │   ├── feature_selection_camada1.py    # Filtro estatístico (quasi-const + Pearson + ANOVA)
-│   └── training_model.py               # Baseline RF (não é o modelo final)
+│   └── training_model.py               # Baseline RF (auxiliar — não é o modelo final)
 ├── Springer_Segmentation/              # HSMM segmentation (Springer et al., 2016) — vendored
 │   └── gerar_modelo.py                 # Script de treino do modelo HSMM
 ├── springer_segmentation_model.pkl     # Modelo HSMM pré-treinado (dispensa a Seção 5.1)
 ├── features_extraidas.csv              # Features temporais (dispensa a Seção 5.2)
+├── features_espectrais.csv             # Features espectrais (dispensa a Seção 5.3)
 ├── dataset_final.csv                   # Dataset fundido COMPLETO: 864×84 (78 features + ids + 4 rótulos)
 ├── requirements.txt                    # Dependências
 ├── .env.example                        # Modelo de configuração (copiar para .env)
@@ -130,9 +144,9 @@ Gera `springer_segmentation_model.pkl`. **Quando refazer**: apenas se modificar 
 
 Gera `features_extraidas.csv` (20 *features* de Liu et al., 2016). **Quando refazer**: se mudar o modelo HSMM ou os áudios de entrada. Tempo estimado: ~20 min para 872 áudios.
 
-### 5.3. Extração de *features* espectrais (opcional — necessária só no caminho completo)
+### 5.3. Extração de *features* espectrais (opcional — artefato já versionado)
 
-Gera `features_espectrais.csv` (49 *features*: MFCCs + descritores espectrais + bandas clínicas). **Não está versionado** — se for refazer a fusão do zero, rodar a célula correspondente do notebook. Tempo estimado: ~30 min para 872 áudios.
+Gera `features_espectrais.csv` (49 *features*: MFCCs + descritores espectrais + bandas clínicas). **Quando refazer**: se mudar o modelo HSMM ou os áudios de entrada. Tempo estimado: ~30 min para 872 áudios.
 
 ### 5.4. Fusão e construção do `dataset_final.csv` (opcional — artefato já versionado)
 
@@ -156,9 +170,10 @@ Executar as células do notebook na ordem:
 
 | Etapa | Saída | Tempo |
 |-------|-------|-------|
-| **Curvas Precision-Recall + AP + calibração (Brier, *reliability*)** — avaliação *out-of-fold* (`GroupKFold(5)`) do XGB final | `resultados/calibracao_brier.csv` + gráficos | ~5 min |
-| **Interpretabilidade (SHAP global + local, LIME)** sobre o XGB tunado treinado em toda a base | gráficos *summary*/*waterfall* | ~10 min |
-| **Importância via Regressão Logística** (*sanity check* linear cruzado contra o ranking SHAP) | `resultados/lr_importancia_features.csv` | ~2 min |
+| **Importância global pelos coeficientes da LR** — como o modelo final é linear, sua regra de decisão *são* os coeficientes (sinal + magnitude por *feature* e por doença, sobre *features* padronizadas); interpretação global primária, sem explicador *post-hoc* | `resultados/lr_importancia_features.csv` + figura de barras | ~2 min |
+| **Verificação cruzada de família — SHAP no XGBoost companheiro** (confirma as *features* dominantes em um modelo de árvore) | gráficos *summary* | ~10 min |
+| **Explicação local (SHAP `LinearExplainer` + LIME) sobre a própria LR** — TP de alta confiança e FN *borderline* por doença | gráficos *waterfall* | ~5 min |
+| **Curvas Precision-Recall + AP + calibração (Brier, *reliability*)** — avaliação *out-of-fold* (`GroupKFold(5)`) da LR final | `resultados/calibracao_brier.csv` + gráficos | ~5 min |
 
 Os tempos são estimativas medidas no sistema descrito na Seção 6.3.
 
@@ -175,17 +190,18 @@ Os tempos são estimativas medidas no sistema descrito na Seção 6.3.
 
 ### 6.2. Resultados esperados
 
-Após executar a modelagem, esperar (referência: `resultados/matriz_mediana_score_clinico.csv` e `wilcoxon_pos_matriz.csv`):
+Após executar a modelagem, esperar (referência: o manuscrito do TCC; localmente, `resultados/matriz_mediana_score_clinico.csv` e `wilcoxon_pos_matriz.csv`):
 
-- **Matriz 6×3 — mediana do *score* clínico em D3 (top-3)**: **XGB ≈ 81,50 %**, LR ≈ 81,17 %, GB ≈ 80,62 %.
-- **Wilcoxon entre os 3 finalistas em D3** (empate estatístico): XGB vs LR *p* = 0,76; XGB vs GB *p* = 0,053; LR vs GB *p* = 0,90.
-- **Wilcoxon vs *trivial* "tudo positivo"** (mediana 74,44 %): *p* < 0,0001, **20/20 *splits*** a favor do XGB.
-- **Wilcoxon de visões**: D3 vs D1 *p* = 0,0001 (17/20 *splits*); D3 vs D2 *p* < 0,0001 (20/20).
-- **Desempate por doença (max-min do pior caso)**: **XGBoost 64,81 % (em MR)** > GB 60,34 % (em AR) > LR 57,41 % (em MR) — o XGBoost não tem doença em colapso.
-- **Modelo final (XGB em D3) — mediana por doença**: AS 81,48 %, AR 84,48 %, MR 77,78 %, MS 85,19 %; pior caso *macro* 74,88 %; limite inferior do IC 95 % = 66,57 %.
-- **Veredito**: **XGBoost em D3** — vencedor nominal e simultaneamente o mais robusto por doença, selecionado para SHAP/LIME.
+- **Matriz 6×3 — mediana do *score* clínico em D3 (top-3)**: **LR ≈ 81,03 %**, GB ≈ 80,14 %, XGB ≈ 79,81 %.
+- **Wilcoxon entre os 3 finalistas em D3** (empate estatístico): LR vs GB *p* = 0,78; LR vs XGB *p* = 0,41; GB vs XGB *p* = 0,50.
+- **Wilcoxon vs *trivial* "tudo positivo"** (mediana 74,44 %): *p* < 0,0001, **18/20 *splits*** a favor da LR.
+- **Wilcoxon de visões**: D3 vs D1 (ausculta, 77,24 %) *p* = 0,0083 (15/20 *splits*); D3 vs D2 (demografia, 75,37 %) *p* = 0,0009 (17/20).
+- **Desempate por doença (max-min do pior caso)**: **LR 57,41 % (em MR)** > XGB 53,70 % (em MR) > GB 51,85 % (em MR); a LR também tem o maior IC 95 % inferior na pior doença (60,93 %) — é a que melhor protege o piso por doença.
+- **Modelo final (LR em D3) — mediana por doença**: AS 86,00 %, AR 82,76 %, MS 75,93 %, MR 79,63 %; pior caso *macro* 71,92 %; limite inferior do IC 95 % do *macro* = 72,40 %.
+- **Confiabilidade (*out-of-fold*)**: AP por doença de 0,533 (MR) a 0,701 (AS) — AR 0,574, MS 0,578; *Brier score* de 0,166 (AS) a 0,229 (AR), com diagramas de confiabilidade próximos da diagonal (probabilidades bem calibradas, sem recalibração).
+- **Veredito**: **Regressão Logística em D3** — vencedora nominal e simultaneamente a mais robusta por doença, escolhida como modelo final pela interpretabilidade intrínseca.
 
-Pequenas variações (< 1 pp) podem ocorrer por diferenças de versão de `scikit-learn` ou de `xgboost`.
+> **Sobre a variação entre execuções.** Os três finalistas (LR, GB, XGB) estão em **empate estatístico** (Wilcoxon, *p* = 0,41–0,78). Como a diferença de mediana entre eles é da ordem de ~1 pp, o **ranking nominal e os dígitos exatos podem oscilar** entre versões de `scikit-learn`/`xgboost` ou hardware — em alguns ambientes o XGBoost chega a liderar nominalmente. O que se reproduz de forma robusta é a **metodologia** (matriz → Wilcoxon → desempate por pior caso por doença sob FN×5) e o **empate** em si; os números acima são os reportados no TCC. A escolha da LR como modelo final não depende de uma diferença significativa de desempenho, e sim do critério de robustez por doença somado à interpretabilidade.
 
 ### 6.3. Sistema testado
 
