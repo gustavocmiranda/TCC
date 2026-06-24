@@ -171,8 +171,7 @@ Executar as células do notebook na ordem:
 | Etapa | Saída | Tempo |
 |-------|-------|-------|
 | **Importância global pelos coeficientes da LR** — como o modelo final é linear, sua regra de decisão *são* os coeficientes (sinal + magnitude por *feature* e por doença, sobre *features* padronizadas); interpretação global primária, sem explicador *post-hoc* | `resultados/lr_importancia_features.csv` + figura de barras | ~2 min |
-| **Verificação cruzada de família — SHAP no XGBoost companheiro** (confirma as *features* dominantes em um modelo de árvore) | gráficos *summary* | ~10 min |
-| **Explicação local (SHAP `LinearExplainer` + LIME) sobre a própria LR** — TP de alta confiança e FN *borderline* por doença | gráficos *waterfall* | ~5 min |
+| **Explicação local (SHAP `LinearExplainer` + LIME) sobre a própria LR** — TP de alta confiança e FN *borderline* por doença; SHAP exato para modelos lineares e LIME como *cross-check* entre métodos | gráficos *waterfall* (SHAP) + barras (LIME) | ~5 min |
 | **Curvas Precision-Recall + AP + calibração (Brier, *reliability*)** — avaliação *out-of-fold* (`GroupKFold(5)`) da LR final | `resultados/calibracao_brier.csv` + gráficos | ~5 min |
 
 Os tempos são estimativas medidas no sistema descrito na Seção 6.3.
